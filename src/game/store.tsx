@@ -19,7 +19,7 @@ import {
   type AchievementDef,
   type MissionState,
 } from './progression'
-import { emptyProgress, loadData, normalize, prune, saveData } from './storage'
+import { emptyProgress, loadData, normalize, prune, removeProfile, requestPersistence, saveData } from './storage'
 import type { AppData, Profile, ProfileProgress, Settings, XpAward } from './types'
 
 export interface RecordInput {
@@ -114,6 +114,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const err = saveData(prune(data))
     if (err) setStorageError(err)
   }, [data])
+
+  // Once there is progress worth keeping, ask the browser not to clear it under storage pressure.
+  // Asked once per visit: Chrome can grant it later as the site gets more use.
+  const hasResults = data.results.length > 0
+  useEffect(() => {
+    if (hasResults) void requestPersistence()
+  }, [hasResults])
 
   // Sync across tabs.
   useEffect(() => {
@@ -306,23 +313,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [setData],
   )
 
-  const deleteProfile = useCallback(
-    (id: string) => {
-      const d = dataRef.current
-      if (d.profiles.length <= 1) return
-      const profiles = d.profiles.filter((p) => p.id !== id)
-      const progress = { ...d.progress }
-      delete progress[id]
-      setData({
-        ...d,
-        profiles,
-        progress,
-        results: d.results.filter((r) => r.profileId !== id),
-        activeProfileId: d.activeProfileId === id ? profiles[0].id : d.activeProfileId,
-      })
-    },
-    [setData],
-  )
+  const deleteProfile = useCallback((id: string) => setData(removeProfile(dataRef.current, id)), [setData])
 
   const resetProfile = useCallback(
     (id: string) => {

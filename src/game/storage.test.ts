@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TestResult } from '@/engine/types'
-import { DEFAULT_SETTINGS, defaultData, loadData, normalize, prune, saveData, STORAGE_KEY } from './storage'
+import { DEFAULT_SETTINGS, defaultData, isPersisted, loadData, normalize, prune, removeProfile, requestPersistence, saveData, STORAGE_KEY } from './storage'
 import type { AppData } from './types'
 
 let n = 0
@@ -160,5 +160,81 @@ describe('loadData / saveData', () => {
       throw new DOMException('full', 'QuotaExceededError')
     })
     expect(saveData(normalize(data()))).toMatch(/Storage is full/)
+  })
+})
+
+describe('removeProfile', () => {
+  const two = () =>
+    normalize(
+      data({
+        profiles: [
+          { id: 'p1', name: 'Ada' },
+          { id: 'p2', name: 'Grace' },
+        ],
+        activeProfileId: 'p1',
+        results: [r({ profileId: 'p1' }), r({ profileId: 'p2' }), r({ profileId: 'p2' })],
+        progress: { p1: { zenMs: 5 }, p2: { zenMs: 9 } },
+      }),
+    )
+
+  it('deletes another player with their results and progress', () => {
+    const out = removeProfile(two(), 'p2')
+    expect(out.profiles.map((p) => p.id)).toEqual(['p1'])
+    expect(out.results.every((x) => x.profileId === 'p1')).toBe(true)
+    expect(out.progress).not.toHaveProperty('p2')
+    expect(out.activeProfileId).toBe('p1')
+  })
+
+  it('switches to a remaining player when the active one is deleted', () => {
+    const out = removeProfile(two(), 'p1')
+    expect(out.activeProfileId).toBe('p2')
+    expect(out.results).toHaveLength(2)
+    expect(out.progress.p2.zenMs).toBe(9)
+  })
+
+  it('starts over with a fresh player when the last one is deleted, keeping settings', () => {
+    const d = normalize(data({ results: [r()], settings: { theme: 'light' } }))
+    const out = removeProfile(d, 'p1')
+    expect(out.profiles).toHaveLength(1)
+    expect(out.profiles[0].id).not.toBe('p1')
+    expect(out.results).toEqual([])
+    expect(out.progress[out.activeProfileId]).toEqual({ xpLedger: [], achievements: {}, boss: {}, dailyQuests: {}, zenMs: 0 })
+    expect(out.settings.theme).toBe('light')
+  })
+
+  it('ignores unknown ids', () => {
+    const d = two()
+    expect(removeProfile(d, 'nobody')).toBe(d)
+  })
+})
+
+describe('persistent storage', () => {
+  // jsdom has no StorageManager, so each test installs a fake one.
+  const fake = (persisted: boolean, grant: boolean) => {
+    const persist = vi.fn(async () => grant)
+    Object.defineProperty(navigator, 'storage', { configurable: true, value: { persisted: async () => persisted, persist } })
+    return persist
+  }
+  afterEach(() => {
+    delete (navigator as { storage?: unknown }).storage
+  })
+
+  it('does nothing where the API is missing', async () => {
+    expect(await requestPersistence()).toBe(false)
+    expect(await isPersisted()).toBe(false)
+  })
+
+  it('asks only when not already persisted', async () => {
+    const persist = fake(true, false)
+    expect(await requestPersistence()).toBe(true)
+    expect(await isPersisted()).toBe(true)
+    expect(persist).not.toHaveBeenCalled()
+  })
+
+  it('reports what the browser decides', async () => {
+    fake(false, true)
+    expect(await requestPersistence()).toBe(true)
+    fake(false, false)
+    expect(await requestPersistence()).toBe(false)
   })
 })

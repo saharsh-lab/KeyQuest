@@ -1,6 +1,7 @@
-import { Download, Pencil, Play, Trash2, Upload } from 'lucide-react'
-import { useRef, useState, type ReactNode } from 'react'
+import { Download, Pencil, Play, Trash2, Upload, UserRound } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CATEGORIES, CustomTextDialog, DifficultyPicker } from '@/components/TestOptions'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
@@ -13,7 +14,8 @@ import { VirtualKeyboard } from '@/components/VirtualKeyboard'
 import { LAYOUT_LABELS } from '@/data/layouts'
 import { LANGUAGE_LABELS } from '@/data/words'
 import type { Category, Language } from '@/engine/types'
-import { ARENA_THEMES, KEYBOARD_THEMES } from '@/game/progression'
+import { ARENA_THEMES, KEYBOARD_THEMES, levelFromXp, totalXp } from '@/game/progression'
+import { emptyProgress, isPersisted } from '@/game/storage'
 import { useStore } from '@/game/store'
 import type { KeyboardLayout, Settings } from '@/game/types'
 import { playError, playKey } from '@/lib/sound'
@@ -51,8 +53,18 @@ export function SettingsPage() {
   const { settings, updateSettings: set, level, progress, profile, data } = store
   const unlockCtx = { level: level.level, achievements: progress.achievements }
   const [customOpen, setCustomOpen] = useState(false)
-  const [confirm, setConfirm] = useState<null | 'reset' | 'delete'>(null)
+  const [confirm, setConfirm] = useState<null | { kind: 'reset' } | { kind: 'delete'; id: string }>(null)
   const [name, setName] = useState(profile.name)
+  // Keep the name field in step when the active player changes (switched, or the current one deleted).
+  const [nameFor, setNameFor] = useState(profile.id)
+  if (nameFor !== profile.id) {
+    setNameFor(profile.id)
+    setName(profile.name)
+  }
+  const [persisted, setPersisted] = useState<boolean | null>(null)
+  useEffect(() => {
+    void isPersisted().then(setPersisted)
+  }, [data.results.length])
   const [importMsg, setImportMsg] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -69,6 +81,10 @@ export function SettingsPage() {
     a.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
+
+  const runsOf = (id: string) => data.results.filter((r) => r.profileId === id).length
+  const deleting = confirm?.kind === 'delete' ? data.profiles.find((p) => p.id === confirm.id) : undefined
+  const deletingRuns = deleting ? runsOf(deleting.id) : 0
 
   return (
     <div className="flex flex-col gap-6">
@@ -189,6 +205,35 @@ export function SettingsPage() {
         </dl>
       </Section>
 
+      <Section title="Players" description="Everyone who plays in this browser. Each player has their own XP, streak and results. Add players from the player menu at the top.">
+        <ul className="flex flex-col">
+          {data.profiles.map((p) => {
+            const runs = runsOf(p.id)
+            return (
+              <li key={p.id} className="flex items-center justify-between gap-4 border-t border-border py-3 first:border-t-0 first:pt-0">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-muted">
+                    <UserRound className="size-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="truncate">{p.name}</span>
+                      {p.id === profile.id ? <Badge variant="accent">Playing now</Badge> : null}
+                    </div>
+                    <p className="text-xs text-muted">
+                      Level {levelFromXp(totalXp(data.progress[p.id] ?? emptyProgress())).level} · {runs} {runs === 1 ? 'run' : 'runs'}
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setConfirm({ kind: 'delete', id: p.id })} aria-label={`Delete ${p.name}`}>
+                  <Trash2 /> Delete
+                </Button>
+              </li>
+            )
+          })}
+        </ul>
+      </Section>
+
       <Section title="Player and data" description="Everything is stored in this browser's local storage.">
         <Row label="Player name">
           <form
@@ -204,7 +249,12 @@ export function SettingsPage() {
             </Button>
           </form>
         </Row>
-        <Row label="Back up progress" hint="Download all players, results and settings as a JSON file.">
+        <Row
+          label="Back up progress"
+          hint={`Download all players, results and settings as a JSON file. ${
+            persisted ? 'This browser has agreed to keep your data.' : 'Browsers can clear saved data (Safari after 7 days away), so a backup or installing the app keeps it safe.'
+          }`}
+        >
           <div className="flex gap-2">
             <Button variant="secondary" onClick={exportData}>
               <Download /> Export
@@ -229,35 +279,41 @@ export function SettingsPage() {
         </Row>
         {importMsg ? <p className="pb-2 text-right text-xs text-muted" role="status">{importMsg}</p> : null}
         <Row label="Reset this player's progress" hint="Deletes all results, XP and achievements for this player.">
-          <Button variant="outline" onClick={() => setConfirm('reset')}>
+          <Button variant="outline" onClick={() => setConfirm({ kind: 'reset' })}>
             Reset progress
-          </Button>
-        </Row>
-        <Row label="Remove this player" hint={data.profiles.length <= 1 ? 'You need at least one player.' : 'Removes the player and all their results.'}>
-          <Button variant="outline" disabled={data.profiles.length <= 1} onClick={() => setConfirm('delete')}>
-            <Trash2 /> Remove player
           </Button>
         </Row>
       </Section>
 
       <Dialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
         <DialogContent
-          title={confirm === 'reset' ? `Reset ${profile.name}'s progress?` : `Remove ${profile.name}?`}
-          description={confirm === 'reset' ? 'All results, XP, streaks and achievements for this player will be permanently deleted. Settings stay.' : 'This player and all of their results will be permanently deleted.'}
+          title={deleting ? `Delete ${deleting.name}?` : `Reset ${profile.name}'s progress?`}
+          description={
+            deleting
+              ? `${deleting.name} and their ${deletingRuns} ${deletingRuns === 1 ? 'run' : 'runs'}, XP, achievements and streak will be permanently deleted from this device.${
+                  data.profiles.length === 1 ? ' You will start over as a new player. Settings stay.' : ''
+                }`
+              : 'All results, XP, streaks and achievements for this player will be permanently deleted. Settings stay.'
+          }
         >
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            {deleting && deletingRuns > 0 ? (
+              <Button variant="secondary" className="mr-auto" onClick={exportData}>
+                <Download /> Export backup first
+              </Button>
+            ) : null}
             <Button variant="ghost" onClick={() => setConfirm(null)}>
               Cancel
             </Button>
             <Button
               variant="danger"
               onClick={() => {
-                if (confirm === 'reset') store.resetProfile(profile.id)
-                else store.deleteProfile(profile.id)
+                if (deleting) store.deleteProfile(deleting.id)
+                else store.resetProfile(profile.id)
                 setConfirm(null)
               }}
             >
-              {confirm === 'reset' ? 'Reset progress' : 'Remove player'}
+              {deleting ? 'Delete player' : 'Reset progress'}
             </Button>
           </div>
         </DialogContent>

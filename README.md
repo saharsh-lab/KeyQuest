@@ -13,6 +13,12 @@ npm run build     # type-check + production build into dist/
 
 `dist/` is a static site (hash routing, relative paths), so it can be opened from any static host.
 
+## Installing and offline play
+
+The production build is an installable web app (`public/manifest.webmanifest`). A service worker, generated at build time from `pwa/sw.js` by the plugin in `vite.config.ts`, precaches every built file, so after the first visit the whole app works offline. It is only registered in production builds and needs HTTPS (or localhost).
+
+Progress lives in this browser's local storage. Once a player has results, the app asks the browser to keep that storage persistent so it is not cleared when disk space runs low. Safari deletes site data after 7 days without a visit; installing the app to the home screen avoids that. On iPhone and iPad the installed app gets its own storage, separate from Safari, so move progress across with Export and Import in Settings.
+
 ## Stack
 
 React 19, Vite, TypeScript (strict), Tailwind CSS v4, shadcn/ui-style components on Radix primitives (`src/components/ui`), Lucide icons, Framer Motion, Recharts. Fonts: Geist and Geist Mono (self-hosted via Fontsource). Sounds are synthesized with Web Audio, so there are no audio files.

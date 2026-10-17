@@ -215,6 +215,47 @@ export function prune(data: AppData): AppData {
   return { ...data, results }
 }
 
+/**
+ * Delete a player with all their results and progress. Deleting the last player starts over with a fresh
+ * one, keeping the device's settings.
+ */
+export function removeProfile(data: AppData, id: string): AppData {
+  if (!data.profiles.some((p) => p.id === id)) return data
+  if (data.profiles.length === 1) return { ...defaultData(), settings: data.settings }
+  const profiles = data.profiles.filter((p) => p.id !== id)
+  const progress = { ...data.progress }
+  delete progress[id]
+  return {
+    ...data,
+    profiles,
+    progress,
+    results: data.results.filter((r) => r.profileId !== id),
+    activeProfileId: data.activeProfileId === id ? profiles[0].id : data.activeProfileId,
+  }
+}
+
+/**
+ * Ask the browser to exempt our storage from automatic cleanup (low disk space). Chrome decides silently
+ * from site engagement and may say yes on a later visit; Firefox asks the player. Safari's 7-day deletion of
+ * site data is only avoided by installing the app to the home screen.
+ */
+export async function requestPersistence(): Promise<boolean> {
+  try {
+    if (!navigator.storage?.persist) return false
+    return (await navigator.storage.persisted()) || (await navigator.storage.persist())
+  } catch {
+    return false
+  }
+}
+
+export async function isPersisted(): Promise<boolean> {
+  try {
+    return (await navigator.storage?.persisted?.()) ?? false
+  } catch {
+    return false
+  }
+}
+
 /** Results that can be replayed as a ghost share a word count. */
 export function ghostKey(r: Pick<TestResult, 'config' | 'valid'>): string | null {
   if (!r.valid || r.config.length?.kind !== 'words') return null
