@@ -1,0 +1,443 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens. One accent (electric lime), neutral charcoal surfaces.
+ * Every color used by components comes from these variables so both themes stay in sync.
+ */
+:root {
+  --bg: #f5f5f2;
+  --surface: #ffffff;
+  --surface-2: #efefeb;
+  --surface-3: #e6e6e1;
+  --border: #e2e2dc;
+  --border-strong: #cfcfc8;
+  --fg: #17181b;
+  --fg-muted: #61636b;
+  --fg-subtle: #696b72;
+  --accent: #b9ec1c;
+  --accent-hover: #a9da12;
+  --accent-fg: #142000;
+  --accent-text: #4b7a00;
+  --accent-soft: rgba(132, 190, 0, 0.14);
+  --danger: #d92d3a;
+  --danger-soft: rgba(217, 45, 58, 0.1);
+  --warning: #b86e00;
+  --info: #2563eb;
+  --ring: #6a9c00;
+  --shadow: 0 1px 2px rgba(20, 20, 20, 0.05), 0 4px 16px rgba(20, 20, 20, 0.04);
+  --chart-grid: #e7e7e2;
+  --chart-2: #8d8f96;
+  --radius: 12px;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #111214;
+  --surface: #17181b;
+  --surface-2: #1d1e22;
+  --surface-3: #25262b;
+  --border: #26272c;
+  --border-strong: #34353b;
+  --fg: #ececee;
+  --fg-muted: #9a9ca5;
+  --fg-subtle: #84868f;
+  --accent: #c6f432;
+  --accent-hover: #d4fb55;
+  --accent-fg: #151d00;
+  --accent-text: #c6f432;
+  --accent-soft: rgba(198, 244, 50, 0.1);
+  --danger: #f2555a;
+  --danger-soft: rgba(242, 85, 90, 0.12);
+  --warning: #f0a830;
+  --info: #6aa5ff;
+  --ring: #c6f432;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.18);
+  --chart-grid: #26272c;
+  --chart-2: #6b6d76;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-subtle: var(--fg-subtle);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-ring: var(--ring);
+  --font-sans: 'Geist Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --shadow-card: var(--shadow);
+  --radius-card: var(--radius);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html,
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    min-height: 100dvh;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+}
+
+/* Reduced motion: set by the user's setting or the OS preference. */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+@keyframes caret-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+.caret-blink {
+  animation: caret-blink 1s steps(1) infinite;
+}
+
+@keyframes key-flash {
+  from {
+    transform: translateY(1px) scale(0.97);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* Focus mode: chrome fades while a run is in progress (see useFocusMode). */
+[data-focus-fade] {
+  transition: opacity 0.35s ease;
+}
+.is-typing [data-focus-fade] {
+  opacity: 0;
+  pointer-events: none;
+}
+.is-typing,
+.is-typing * {
+  cursor: none !important;
+}
+
+/* Thin, unobtrusive scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* Typing-area themes (unlockable). Each overrides only the arena's local tokens. */
+.arena-theme-default {
+  --arena-bg: transparent;
+  --arena-correct: var(--fg);
+  --arena-pending: var(--fg-subtle);
+  --arena-error: var(--danger);
+  --arena-caret: var(--accent-text);
+}
+.arena-theme-focus {
+  --arena-bg: transparent;
+  --arena-correct: var(--fg-muted);
+  --arena-pending: var(--fg);
+  --arena-error: var(--danger);
+  --arena-caret: var(--fg);
+}
+.arena-theme-terminal {
+  --arena-bg: #0b0d0b;
+  --arena-correct: #b8f0a0;
+  --arena-pending: #4a5e48;
+  --arena-error: #ff6b6b;
+  --arena-caret: #b8f0a0;
+}
+.arena-theme-paper {
+  --arena-bg: #f3efe4;
+  --arena-correct: #2b2a26;
+  --arena-pending: #a59f8e;
+  --arena-error: #c0392b;
+  --arena-caret: #2b2a26;
+}
+.arena-theme-midnight {
+  --arena-bg: #0e1424;
+  --arena-correct: #dbe4ff;
+  --arena-pending: #4d5878;
+  --arena-error: #ff7a90;
+  --arena-caret: #8fb0ff;
+}
+
+/* Virtual keyboard keycaps. With 3D on, the board tilts away and every cap has a side wall that
+   collapses when it is pressed. */
+.kb-cap {
+  --side: color-mix(in oklab, var(--cap-bg) 55%, #000);
+  background: var(--cap-bg);
+  transition:
+    background-color 0.1s,
+    border-color 0.1s,
+    transform 0.12s ease-out,
+    box-shadow 0.12s ease-out;
+}
+.kb-3d {
+  perspective: 1100px;
+  padding-bottom: 6px;
+}
+.kb-3d .kb-plate {
+  transform: rotateX(22deg);
+  transform-origin: 50% 100%;
+  transform-style: preserve-3d;
+  padding: 14px 14px 18px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 85%, transparent), var(--surface));
+  box-shadow:
+    0 1px 0 color-mix(in oklab, var(--fg) 6%, transparent) inset,
+    0 30px 40px -24px rgb(0 0 0 / 0.55),
+    0 8px 0 -2px color-mix(in oklab, var(--surface) 60%, #000);
+}
+.kb-3d .kb-cap {
+  box-shadow:
+    0 4px 0 0 var(--side),
+    0 6px 8px -2px rgb(0 0 0 / 0.35),
+    inset 0 1px 0 color-mix(in oklab, #fff 10%, transparent);
+  transform: translateY(-2px);
+}
+.kb-3d .kb-cap.is-next {
+  transform: translateY(-4px);
+  box-shadow:
+    0 6px 0 0 var(--side),
+    0 0 18px 2px color-mix(in oklab, var(--kb-next) 55%, transparent),
+    0 10px 14px -4px rgb(0 0 0 / 0.4);
+}
+.kb-3d .kb-cap.is-pressed {
+  animation: kb-press 0.18s ease-out;
+}
+.kb-3d .kb-cap.is-wrong {
+  animation: kb-press-wrong 0.28s ease-out;
+}
+@keyframes kb-press {
+  0% {
+    transform: translateY(2px);
+    box-shadow: 0 0 0 0 var(--side), 0 1px 2px rgb(0 0 0 / 0.3);
+  }
+}
+@keyframes kb-press-wrong {
+  0% {
+    transform: translateY(2px);
+    box-shadow: 0 0 0 0 var(--side), 0 0 16px 2px color-mix(in oklab, var(--danger) 60%, transparent);
+  }
+  30% {
+    transform: translate(-2px, 1px);
+  }
+  60% {
+    transform: translate(2px, 0);
+  }
+}
+.kb-cap:not(.kb-3d *).is-pressed {
+  animation: key-flash 0.14s ease-out;
+}
+
+/* Dashboard hero: CSS-3D keycaps on a tilted board. */
+.hero-scene {
+  --cap: clamp(38px, 7vw, 54px);
+  --gap: clamp(6px, 1.2vw, 10px);
+  --h: 12px;
+  --tilt-x: 0deg;
+  --tilt-z: 0deg;
+  perspective: 900px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(var(--cap) * 2 + var(--gap) + 70px);
+}
+.hero-board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  padding: calc(var(--gap) * 2);
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 90% at 30% 0%, color-mix(in oklab, var(--accent) 10%, transparent), transparent 60%),
+    var(--surface-2);
+  border: 1px solid var(--border);
+  box-shadow: 0 40px 60px -30px rgb(0 0 0 / 0.6);
+  transform-style: preserve-3d;
+  transform: rotateX(calc(48deg + var(--tilt-x))) rotateZ(calc(-14deg + var(--tilt-z)));
+  transition: transform 0.25s ease-out;
+}
+.hero-scene.is-bump .hero-board {
+  animation: hero-bump 0.25s ease-out;
+}
+.hero-float {
+  transform-style: preserve-3d;
+  animation: hero-float 3s ease-in-out infinite;
+}
+.hero-cap {
+  position: relative;
+  display: block;
+  width: var(--cap);
+  height: var(--cap);
+  transform-style: preserve-3d;
+  transition: transform 0.12s ease-out;
+  cursor: pointer;
+  outline: none;
+}
+.hero-cap.is-wide {
+  width: calc(var(--cap) * 1.6 + var(--gap));
+}
+.hero-cap.is-down {
+  transform: translateZ(calc(var(--h) * -0.9));
+  transition-duration: 0.05s;
+}
+.hero-face {
+  position: absolute;
+  --cap-color: var(--surface);
+  background: var(--cap-color);
+  border: 1px solid var(--border);
+}
+.hero-cap.is-accent .hero-face {
+  --cap-color: var(--accent);
+  border-color: color-mix(in oklab, var(--accent) 70%, #000);
+}
+.hero-top {
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-family: 'Geist Mono Variable', ui-monospace, monospace;
+  font-size: calc(var(--cap) * 0.36);
+  font-weight: 600;
+  color: var(--fg);
+  transform: translateZ(var(--h));
+  background: linear-gradient(160deg, color-mix(in oklab, #fff 7%, var(--cap-color)), var(--cap-color));
+  box-shadow: inset 0 -3px 6px rgb(0 0 0 / 0.18);
+}
+.hero-cap.is-accent .hero-top {
+  color: var(--accent-fg);
+  font-size: calc(var(--cap) * 0.3);
+  box-shadow:
+    inset 0 -3px 6px rgb(0 0 0 / 0.18),
+    0 0 26px 2px color-mix(in oklab, var(--accent) 45%, transparent);
+}
+.hero-cap.is-down .hero-top {
+  border-color: var(--accent-text);
+}
+.hero-front {
+  left: 4px;
+  right: 4px;
+  bottom: 0;
+  height: var(--h);
+  transform-origin: bottom;
+  transform: rotateX(-90deg);
+  background: color-mix(in oklab, var(--cap-color) 62%, #000);
+}
+.hero-left,
+.hero-right {
+  top: 4px;
+  bottom: 4px;
+  width: var(--h);
+  background: color-mix(in oklab, var(--cap-color) 75%, #000);
+}
+.hero-left {
+  left: 0;
+  transform-origin: left;
+  transform: rotateY(-90deg);
+}
+.hero-right {
+  right: 0;
+  transform-origin: right;
+  transform: rotateY(90deg);
+  background: color-mix(in oklab, var(--cap-color) 50%, #000);
+}
+@keyframes hero-float {
+  0%,
+  100% {
+    transform: translateZ(0);
+  }
+  50% {
+    transform: translateZ(9px);
+  }
+}
+@keyframes hero-bump {
+  40% {
+    transform: rotateX(calc(52deg + var(--tilt-x))) rotateZ(calc(-14deg + var(--tilt-z)));
+  }
+}
+.hero-scene.is-flat .hero-board {
+  transform: none;
+}
+.hero-scene.is-flat .hero-float {
+  animation: none;
+}
+.hero-scene.is-flat .hero-face:not(.hero-top) {
+  display: none;
+}
+.hero-scene.is-flat .hero-top {
+  transform: none;
+}
+
+/* Pointer tilt for cards (see Tilt.tsx). */
+.tilt {
+  --rx: 0deg;
+  --ry: 0deg;
+  perspective: 800px;
+}
+.tilt-inner {
+  position: relative;
+  transform: rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 0.2s ease-out;
+  transform-style: preserve-3d;
+}
+.tilt[data-hover] .tilt-inner {
+  transition-duration: 0.06s;
+}
+.tilt-inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card, 14px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  background: radial-gradient(260px circle at var(--gx, 50%) var(--gy, 50%), color-mix(in oklab, var(--accent) 14%, transparent), transparent 70%);
+}
+.tilt[data-hover] .tilt-inner::after {
+  opacity: 1;
+}
+.tilt-pop {
+  transform: translateZ(28px);
+}
